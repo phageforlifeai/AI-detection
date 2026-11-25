@@ -1,0 +1,51 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SciGram AI & Scientific Structure Checker Action",
+    "description": "Checks edited scientific passages for AI-generated/AI-assisted probabilities and 7 structural LLM habits (burstiness, participial tails, excess vocabulary, discourse starters, boilerplate templates).",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://YOUR-SCIGRAM-SERVER-DOMAIN.example.com"
+    }
+  ],
+  "paths": {
+    "/api/analyze": {
+      "post": {
+        "operationId": "analyzeScientificPassage",
+        "summary": "Evaluate scientific prose for AI-like structure and 3-tier classification",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["text"],
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "description": "The edited scientific paragraph or section to verify before returning to the user."
+                  },
+                  "title": {
+                    "type": "string",
+                    "default": "GPT Edited Draft"
+                  },
+                  "include_sentences": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "SciGram 3-Expert MoE classification and structural trigger diagnostics"
+          }
+        }
+      }
+    }
+  }
+}

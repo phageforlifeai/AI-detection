@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SciGram — AI Detection &amp; Scientific Structure Analyzer</title>
+  <link rel="stylesheet" href="static/styles.css" />
+</head>
+<body>
+  <!-- Top Navigation Header -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="brand">
+        <div class="brand-logo" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+            <path d="M2 17l10 5 10-5"></path>
+            <path d="M2 12l10 5 10-5"></path>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-title">SciGram <span class="brand-tag">v1.0</span></div>
+          <div class="brand-subtitle">Pangram-Style MoE AI Detector &amp; Scientific Structure Coach</div>
+        </div>
+      </div>
+      <div id="engineStatusPill" class="engine-pill" title="3-Expert Mixture-of-Experts Status">
+        <span class="status-dot"></span>
+        <span id="engineStatusText">Loading MoE Models...</span>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <button id="toggleEditorBtn" class="btn btn-ghost" type="button" title="Show or collapse manuscript input box">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        <span>Edit Input</span>
+      </button>
+      <div class="dropdown-wrap">
+        <button id="historyBtn" class="btn btn-ghost" type="button">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span>History</span>
+          <span id="historyCount" class="count-chip">0</span>
+        </button>
+        <div id="historyMenu" class="dropdown-menu hidden">
+          <div class="dropdown-header">
+            <span>Recent Manuscript Scans</span>
+            <button id="clearHistoryBtn" class="link-btn" type="button">Clear</button>
+          </div>
+          <div id="historyList" class="history-list"></div>
+        </div>
+      </div>
+      <button id="exportMdBtn" class="btn btn-secondary" type="button" disabled>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span>Export Report (.md)</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Sample Preset Bar -->
+    <section class="preset-bar" aria-label="Sample Scientific Manuscripts">
+      <span class="preset-label">Quick Presets:</span>
+      <div id="presetButtons" class="preset-buttons"></div>
+    </section>
+
+    <!-- Manuscript Input & File Upload Composer -->
+    <section id="composerSection" class="composer-card">
+      <div class="composer-header">
+        <div class="composer-title-group">
+          <input id="docTitleInput" type="text" class="doc-title-input" value="Manuscript Draft" aria-label="Document Title" />
+          <span id="wordCountBadge" class="meta-pill">0 words</span>
+          <span id="minWordHint" class="meta-hint">50+ words recommended (Pangram standard)</span>
+        </div>
+        <div class="composer-actions">
+          <label class="checkbox-label" title="Automatically ignore trailing Bibliography / References section so citations do not skew prose metrics">
+            <input id="stripRefsToggle" type="checkbox" checked />
+            <span>Exclude References list</span>
+          </label>
+          <label for="fileUploadInput" class="btn btn-secondary file-btn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span>Upload .tex / .docx / .pdf / .txt</span>
+          </label>
+          <input id="fileUploadInput" type="file" accept=".txt,.md,.tex,.latex,.docx,.pdf" class="sr-only" />
+          <button id="clearTextBtn" class="btn btn-ghost" type="button">Clear</button>
+        </div>
+      </div>
+
+      <div id="dropZone" class="editor-dropzone">
+        <textarea
+          id="manuscriptInput"
+          class="manuscript-textarea"
+          placeholder="Paste your scientific abstract, section, or full LaTeX / manuscript draft here (or drag & drop a .tex, .docx, .pdf, or .txt file)..."
+          rows="9"
+        ></textarea>
+        <div id="dropOverlay" class="drop-overlay hidden">
+          <div class="drop-overlay-box">Drop <strong>.tex</strong>, <strong>.docx</strong>, <strong>.pdf</strong>, or <strong>.txt</strong> manuscript to scan</div>
+        </div>
+      </div>
+
+      <div class="composer-footer">
+        <div class="composer-tip">
+          <strong>Tip:</strong> Supports raw LaTeX (<code>\section{}</code>, <code>\cite{}</code>, inline <code>$...$</code> math) as well as plain scientific prose. Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to scan.
+        </div>
+        <button id="analyzeBtn" class="btn btn-primary btn-lg" type="button">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span id="analyzeBtnText">Analyze Manuscript</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Error / Info Banner -->
+    <div id="alertBanner" class="alert-banner hidden" role="alert"></div>
+
+    <!-- Results Dashboard -->
+    <section id="resultsDashboard" class="results-section hidden">
+      <!-- Top Summary Metrics Strip -->
+      <div class="summary-grid">
+        <!-- Card 1: Overall Verdict & Score Gauge -->
+        <div class="metric-card verdict-card">
+          <div class="gauge-wrap">
+            <svg class="score-ring" width="96" height="96" viewBox="0 0 100 100">
+              <circle class="ring-bg" cx="50" cy="50" r="41" stroke-width="10" fill="none"></circle>
+              <circle id="scoreRingArc" class="ring-fg" cx="50" cy="50" r="41" stroke-width="10" fill="none" stroke-dasharray="257.6" stroke-dashoffset="257.6" stroke-linecap="round"></circle>
+            </svg>
+            <div class="gauge-center">
+              <span id="overallAiPct" class="gauge-number">0%</span>
+              <span class="gauge-caption">AI Score</span>
+            </div>
+          </div>
+          <div class="verdict-details">
+            <div class="verdict-eyebrow">Executive Classification</div>
+            <div id="overallVerdictBadge" class="verdict-badge human">Human-Written</div>
+            <div id="docMetaSummary" class="verdict-meta">0 words · 0 passages · 0 ms</div>
+            <div id="shortWarningNote" class="short-warning hidden">Under 50 words — add context for reliable neural calibration.</div>
+          </div>
+        </div>
+
+        <!-- Card 2: Pangram 3-Tier Passage Breakdown -->
+        <div class="metric-card breakdown-card">
+          <div class="card-header-row">
+            <span class="card-kicker">Pangram 3-Tier Passage Breakdown</span>
+            <span class="card-sub">Word-weighted share</span>
+          </div>
+          <div class="stacked-bar" role="img" aria-label="Document Human vs AI-Assisted vs AI-Generated share">
+            <div id="barHuman" class="bar-seg seg-human" style="width: 100%"></div>
+            <div id="barAssisted" class="bar-seg seg-assisted" style="width: 0%"></div>
+            <div id="barAi" class="bar-seg seg-ai" style="width: 0%"></div>
+          </div>
+          <div class="legend-grid">
+            <div class="legend-item">
+              <span class="legend-dot seg-human"></span>
+              <div>
+                <div class="legend-pct" id="pctHuman">0%</div>
+                <div class="legend-name">Human-Written</div>
+              </div>
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot seg-assisted"></span>
+              <div>
+                <div class="legend-pct" id="pctAssisted">0%</div>
+                <div class="legend-name">AI-Assisted</div>
+              </div>
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot seg-ai"></span>
+              <div>
+                <div class="legend-pct" id="pctAi">0%</div>
+                <div class="legend-name">AI-Generated</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 3: Scientific Rhythm (Burstiness) & Empirical Specificity -->
+        <div class="metric-card rhythm-card">
+          <div class="card-header-row">
+            <span class="card-kicker">Sentence Burstiness &amp; Specificity</span>
+            <span id="burstinessBadge" class="mini-tag">CV 0.00</span>
+          </div>
+          <div id="sentenceSparkline" class="sparkline-box" title="Each bar represents one sentence's word length. Uniform ~22-word bars indicate AI-like monotony."></div>
+          <div class="rhythm-stats-row">
+            <div>
+              <span class="stat-label">Mean ± SD:</span>
+              <strong id="sentLenStat">0 ± 0 w</strong>
+            </div>
+            <div>
+              <span class="stat-label">Empirical Anchors:</span>
+              <strong id="anchorDensityStat">0.0 / 100w</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Split Workspace: Annotated Passages (Left) + Diagnostics & Revision Studio (Right) -->
+      <div class="workspace-grid">
+        <!-- Left Column: Annotated Manuscript Passages -->
+        <div class="passages-panel">
+          <div class="panel-toolbar">
+            <div class="view-mode-group" role="tablist" aria-label="Highlighting Granularity">
+              <button id="modePassageBtn" class="seg-btn active" type="button">Passage View</button>
+              <button id="modeSurgicalBtn" class="seg-btn" type="button">Surgical Structure View</button>
+            </div>
+
+            <div class="filter-pills" aria-label="Filter passages by class">
+              <button class="filter-pill active" data-filter="all" type="button">All</button>
+              <button class="filter-pill" data-filter="ai_generated" type="button">AI-Generated</button>
+              <button class="filter-pill" data-filter="ai_assisted" type="button">AI-Assisted</button>
+              <button class="filter-pill" data-filter="human" type="button">Human</button>
+            </div>
+          </div>
+
+          <div id="surgicalLegend" class="surgical-legend hidden">
+            <span class="s-leg-title">Inline Structural Triggers:</span>
+            <span class="trig-sample trig-high">Participial '-ing' / Excess LLM Word / Boilerplate</span>
+            <span class="trig-sample trig-med">Mechanical Starter / Triadic Symmetry / Buzzword</span>
+          </div>
+
+          <div id="passagesContainer" class="passages-list"></div>
+        </div>
+
+        <!-- Right Column: Sticky Inspector & Live Revision Studio -->
+        <aside class="inspector-panel">
+          <div class="inspector-tabs" role="tablist">
+            <button class="insp-tab active" data-tab="passageTab" type="button">Passage Coach</button>
+            <button class="insp-tab" data-tab="studioTab" type="button">Live Revision Studio</button>
+            <button class="insp-tab" data-tab="structureTab" type="button">7-Dim Structure</button>
+          </div>
+
+          <!-- Tab 1: Selected Passage Coach & Expert Breakdown -->
+          <div id="passageTab" class="insp-body">
+            <div id="passageInspectorContent"></div>
+          </div>
+
+          <!-- Tab 2: Live Side-by-Side Revision Studio -->
+          <div id="studioTab" class="insp-body hidden">
+            <div class="studio-header">
+              <div>
+                <div class="studio-title" id="studioPassageLabel">Passage #1 Revision</div>
+                <div class="studio-sub">Edit AI-structured sentences below and re-scan instantly without re-uploading.</div>
+              </div>
+              <button id="autoDetemplateBtn" class="btn btn-secondary btn-xs" type="button" title="Strip mechanical discourse starters, excess buzzwords, and participial tails automatically">
+                Strip Clichés
+              </button>
+            </div>
+
+            <textarea id="studioTextarea" class="studio-textarea" rows="8"></textarea>
+
+            <div class="studio-actions">
+              <button id="resetStudioBtn" class="btn btn-ghost btn-sm" type="button">Reset</button>
+              <div class="studio-actions-right">
+                <button id="recheckPassageBtn" class="btn btn-primary btn-sm" type="button">Re-Check Passage</button>
+                <button id="applyToDocBtn" class="btn btn-success btn-sm hidden" type="button">Apply to Manuscript</button>
+              </div>
+            </div>
+
+            <div id="studioComparisonBox" class="studio-comparison hidden"></div>
+          </div>
+
+          <!-- Tab 3: Whole-Manuscript 7-Dimension Scientific Structure -->
+          <div id="structureTab" class="insp-body hidden">
+            <div class="struct-intro">
+              Measures 7 structural habits that make scientific writing read as LLM-generated (0% = natural human baseline, 100% = strong AI habit).
+            </div>
+            <div id="dimensionBars" class="dim-bars-list"></div>
+            <hr class="divider" />
+            <div class="recs-heading">Top Manuscript Revision Priorities</div>
+            <div id="docRecommendations" class="recs-list"></div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <script src="static/app.js"></script>
+</body>
+</html>
